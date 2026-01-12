@@ -34,8 +34,40 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 
 		if (property.ContainsKey("info"))
 		{
-			if (string.IsNullOrWhiteSpace(property["info"].AsString()))
+			string info = property["info"].AsString();
+			if (string.IsNullOrWhiteSpace(info))
 				return false;
+			AddDialogAbove(info, EditorIcons.IconName.NodeInfo);
+		}
+
+		if (property.ContainsKey("comment"))
+		{
+			string comment = property["comment"].AsString();
+			if (string.IsNullOrWhiteSpace(comment))
+				return false;
+			AddLabelBelow(comment, EditorIcons.IconName.VisualShaderNodeComment, Colors.DimGray);
+		}
+
+		if ("" is string key && (property.ContainsKey(key = "warn") || property.ContainsKey(key = "warning")))
+		{
+			string message = property[key].AsString();
+			if (string.IsNullOrWhiteSpace(message))
+				return false;
+			AddLabelBelow(message, EditorIcons.IconName.StatusWarning, Colors.Yellow with { S = .5f });
+		}
+
+		if (property.ContainsKey("error"))
+		{
+			string error = property["error"].AsString();
+			if (string.IsNullOrWhiteSpace(error))
+				return false;
+			AddLabelBelow(error, EditorIcons.IconName.StatusError, Colors.Red with { S = .75f });
+		}
+
+		return false;
+
+		void AddDialogAbove(string message, string iconName)
+		{
 			MarginContainer container = new();
 			container.AddThemeConstantOverride("margin_left", 4);
 			this.AddCustomControl(container);
@@ -51,12 +83,12 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 					panel.AddChild(m_container);
 					{
 						HBoxContainer hbox = new();
-						hbox.AddThemeConstantOverride("separation", 4);
+						hbox.AddThemeConstantOverride("separation", 8);
 						m_container.AddChild(hbox);
 						{
 							TextureRect icon = new()
 							{
-								Texture = EditorIcons.GetIcon(EditorIcons.IconName.NodeInfo),
+								Texture = EditorIcons.GetIcon(iconName),
 								StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 								CustomMinimumSize = new Vector2(16, 16),
 								Size = new Vector2(16, 16),
@@ -64,11 +96,13 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 							hbox.AddChild(icon);
 						}
 						{
-							Label label = new()
+							RichTextLabel label = new()
 							{
-								Text = property["info"].AsString(),
+								Text = message,
 								CustomMinimumSize = new Vector2(0, 24),
 								AutowrapMode = TextServer.AutowrapMode.WordSmart,
+								BbcodeEnabled = true,
+								FitContent = true,
 							};
 							label.SizeFlagsHorizontal = Control.SizeFlags.Fill | Control.SizeFlags.Expand;
 							hbox.AddChild(label);
@@ -78,64 +112,39 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 			}
 		}
 
-		if (property.ContainsKey("comment"))
+		void AddLabelBelow(string message, string iconName, Color color)
 		{
-			string comment = "💬 " + property["comment"].AsString();
-			if (!string.IsNullOrWhiteSpace(comment))
+			MarginContainer margin = new();
+			margin.AddThemeConstantOverride("margin_left", 4);
+			this.AddPropertyEditor(name, margin, addToEnd: true);
 			{
-				Label label = new()
+				HBoxContainer hbox = new();
+				margin.AddChild(hbox);
 				{
-					Text = comment,
-					CustomMinimumSize = new Vector2(0, 24),
-					AutowrapMode = TextServer.AutowrapMode.WordSmart,
-				};
-				label.AddThemeColorOverride("font_color", Colors.DimGray);
-				MarginContainer container = new();
-				container.AddThemeConstantOverride("margin_left", 4);
-				container.AddChild(label);
-				this.AddPropertyEditor(name, container, addToEnd: true);
+					TextureRect icon = new()
+					{
+						Texture = EditorIcons.GetIcon(iconName),
+						StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+						CustomMinimumSize = new Vector2(16, 16),
+						Size = new Vector2(16, 16),
+					};
+					hbox.AddChild(icon);
+				}
+				{
+					RichTextLabel label = new()
+					{
+						Text = message,
+						CustomMinimumSize = new Vector2(0, 24),
+						AutowrapMode = TextServer.AutowrapMode.WordSmart,
+						BbcodeEnabled = true,
+						FitContent = true,
+					};
+					label.AddThemeColorOverride("font_color", color);
+					label.SizeFlagsHorizontal = Control.SizeFlags.Fill | Control.SizeFlags.Expand;
+					hbox.AddChild(label);
+				}
 			}
 		}
-
-		if (property.ContainsKey("warn"))
-		{
-			string warn = "⚠ " + property["warn"].AsString();
-			if (!string.IsNullOrWhiteSpace(warn))
-			{
-				Label label = new()
-				{
-					Text = warn,
-					CustomMinimumSize = new Vector2(0, 24),
-					AutowrapMode = TextServer.AutowrapMode.WordSmart,
-				};
-				label.AddThemeColorOverride("font_color", Colors.Yellow with { S = .5f });
-				MarginContainer container = new();
-				container.AddThemeConstantOverride("margin_left", 4);
-				container.AddChild(label);
-				this.AddPropertyEditor(name, container, addToEnd: true);
-			}
-		}
-
-		if (property.ContainsKey("error"))
-		{
-			string error = "❌ " + property["error"].AsString();
-			if (!string.IsNullOrWhiteSpace(error))
-			{
-				Label label = new()
-				{
-					Text = error,
-					CustomMinimumSize = new Vector2(0, 24),
-					AutowrapMode = TextServer.AutowrapMode.WordSmart,
-				};
-				label.AddThemeColorOverride("font_color", Colors.Red with { S = .75f });
-				MarginContainer container = new();
-				container.AddThemeConstantOverride("margin_left", 4);
-				container.AddChild(label);
-				this.AddPropertyEditor(name, container, addToEnd: true);
-			}
-		}
-
-		return false;
 	}
 }
 #endif
