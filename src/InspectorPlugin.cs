@@ -20,6 +20,14 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		bool wide
 	)
 	{
+		FieldInfo? field = @object.GetType().GetField(name);
+
+		if (field?.GetCustomAttribute<HideWhenAttribute>() is HideWhenAttribute hideWhen && !hideWhen.TestShow(@object))
+			return true;
+
+		if (field?.GetCustomAttribute<SeparatorAttribute>() is SeparatorAttribute separator) separator.Evaluate(this);
+		if (field?.GetCustomAttribute<MarginAttribute>() is MarginAttribute margin) margin.Evaluate(this);
+
 		Godot.Collections.Dictionary property = new()
 		{
 			{ "name", name },
@@ -30,15 +38,6 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		};
 
 		@object._ValidateProperty(property);
-
-		{
-			if (
-				@object.GetType().GetField(name)?.GetCustomAttribute<HideWhenAttribute>()
-					is HideWhenAttribute attribute
-				&& !attribute.TestShow(@object)
-			)
-				return true;
-		}
 
 		if ((property["usage"].AsInt64() & (long) PropertyUsageFlags.Editor) == 0)
 			return false;
@@ -60,29 +59,29 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		if (property.ContainsKey("error") && property["error"].AsString() is string error && !string.IsNullOrWhiteSpace(error))
 			AddError(error);
 
-		{
-			if (
-				@object.GetType().GetField(name)?.GetCustomAttribute<CalloutAttribute>()
-					is CalloutAttribute attribute
-				&& !string.IsNullOrWhiteSpace(attribute.Note)
-				&& attribute.Test(@object)
-			)
-				switch (attribute.Type)
-				{
-					case CalloutAttribute.CalloutType.Info:
-						AddInfo(attribute.Note);
-						break;
-					case CalloutAttribute.CalloutType.Comment:
-						AddComment(attribute.Note);
-						break;
-					case CalloutAttribute.CalloutType.Warning:
-						AddWarning(attribute.Note);
-						break;
-					case CalloutAttribute.CalloutType.Error:
-						AddError(attribute.Note);
-						break;
-				}
-		}
+		if (
+			field?.GetCustomAttribute<CalloutAttribute>() is CalloutAttribute callout
+			&& !string.IsNullOrWhiteSpace(callout.Note)
+			&& callout.Test(@object)
+		)
+			switch (callout.Type)
+			{
+				case CalloutAttribute.CalloutType.Info:
+					AddInfo(callout.Note);
+					break;
+				case CalloutAttribute.CalloutType.Comment:
+					AddComment(callout.Note);
+					break;
+				case CalloutAttribute.CalloutType.Warning:
+					AddWarning(callout.Note);
+					break;
+				case CalloutAttribute.CalloutType.Error:
+					AddError(callout.Note);
+					break;
+				default:
+					GD.PushWarning($"Unknown {nameof(CalloutAttribute.CalloutType)} \"{callout.Type}\" in field \"{field.Name}\" of object \"{@object.GetType().Name}\".");
+					break;
+			}
 
 		return false;
 
