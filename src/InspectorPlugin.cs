@@ -48,6 +48,18 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		if (property.ContainsKey("comment") && property["comment"].AsString() is string comment && !string.IsNullOrWhiteSpace(comment))
 			AddComment(comment);
 
+
+		{
+			if (
+				field?.GetCustomAttribute<RequiredAttribute>() is RequiredAttribute required
+				&& required.TestIsError(@object, name, out string? error)
+			)
+			{
+				AddError(error);
+				return false;
+			}
+		}
+
 		if (
 			"" is string key
 			&& (property.ContainsKey(key = "warn") || property.ContainsKey(key = "warning"))
@@ -56,8 +68,10 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		)
 			AddWarning(message);
 
-		if (property.ContainsKey("error") && property["error"].AsString() is string error && !string.IsNullOrWhiteSpace(error))
-			AddError(error);
+		{
+			if (property.ContainsKey("error") && property["error"].AsString() is string error && !string.IsNullOrWhiteSpace(error))
+				AddError(error);
+		}
 
 		if (
 			field?.GetCustomAttribute<CalloutAttribute>() is CalloutAttribute callout
