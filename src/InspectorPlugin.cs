@@ -1,5 +1,7 @@
 #if TOOLS
+using System.Reflection;
 using Godot;
+using Raele.InspectorCallout.Attributes;
 
 namespace Raele.InspectorCallout;
 
@@ -29,42 +31,68 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 
 		@object._ValidateProperty(property);
 
+		{
+			if (
+				@object.GetType().GetField(name)?.GetCustomAttribute<HideWhenAttribute>()
+					is HideWhenAttribute attribute
+				&& !attribute.TestShow(@object)
+			)
+				return true;
+		}
+
 		if ((property["usage"].AsInt64() & (long) PropertyUsageFlags.Editor) == 0)
 			return false;
 
-		if (property.ContainsKey("info"))
-		{
-			string info = property["info"].AsString();
-			if (string.IsNullOrWhiteSpace(info))
-				return false;
-			AddDialogAbove(info, EditorIcons.IconName.NodeInfo);
-		}
+		if (property.ContainsKey("info") && property["info"].AsString() is string info && !string.IsNullOrWhiteSpace(info))
+			AddInfo(info);
 
-		if (property.ContainsKey("comment"))
-		{
-			string comment = property["comment"].AsString();
-			if (string.IsNullOrWhiteSpace(comment))
-				return false;
-			AddLabelBelow(comment, EditorIcons.IconName.VisualShaderNodeComment, Colors.DimGray);
-		}
+		if (property.ContainsKey("comment") && property["comment"].AsString() is string comment && !string.IsNullOrWhiteSpace(comment))
+			AddComment(comment);
 
-		if ("" is string key && (property.ContainsKey(key = "warn") || property.ContainsKey(key = "warning")))
-		{
-			string message = property[key].AsString();
-			if (string.IsNullOrWhiteSpace(message))
-				return false;
-			AddLabelBelow(message, EditorIcons.IconName.StatusWarning, Colors.Yellow with { S = .5f });
-		}
+		if (
+			"" is string key
+			&& (property.ContainsKey(key = "warn") || property.ContainsKey(key = "warning"))
+			&& property[key].AsString() is string message
+			&& !string.IsNullOrWhiteSpace(message)
+		)
+			AddWarning(message);
 
-		if (property.ContainsKey("error"))
+		if (property.ContainsKey("error") && property["error"].AsString() is string error && !string.IsNullOrWhiteSpace(error))
+			AddError(error);
+
 		{
-			string error = property["error"].AsString();
-			if (string.IsNullOrWhiteSpace(error))
-				return false;
-			AddLabelBelow(error, EditorIcons.IconName.StatusError, Colors.Red with { S = .75f });
+			if (
+				@object.GetType().GetField(name)?.GetCustomAttribute<CalloutAttribute>()
+					is CalloutAttribute attribute
+				&& !string.IsNullOrWhiteSpace(attribute.Note)
+				&& attribute.Test(@object)
+			)
+				switch (attribute.Type)
+				{
+					case CalloutAttribute.CalloutType.Info:
+						AddInfo(attribute.Note);
+						break;
+					case CalloutAttribute.CalloutType.Comment:
+						AddComment(attribute.Note);
+						break;
+					case CalloutAttribute.CalloutType.Warning:
+						AddWarning(attribute.Note);
+						break;
+					case CalloutAttribute.CalloutType.Error:
+						AddError(attribute.Note);
+						break;
+				}
 		}
 
 		return false;
+
+		void AddInfo(string message) => AddDialogAbove(message, EditorIcons.IconName.NodeInfo);
+		void AddComment(string message)
+			=> AddLabelBelow(message, EditorIcons.IconName.VisualShaderNodeComment, Colors.DimGray);
+		void AddWarning(string message)
+			=> AddLabelBelow(message, EditorIcons.IconName.StatusWarning, Colors.Yellow with { S = .5f });
+		void AddError(string message)
+			=> AddLabelBelow(message, EditorIcons.IconName.StatusError, Colors.Red with { S = .75f });
 
 		void AddDialogAbove(string message, string iconName)
 		{
