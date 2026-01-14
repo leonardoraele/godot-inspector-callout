@@ -8,7 +8,7 @@ namespace Raele.InspectorCallout.Attributes;
 public class CalloutAttribute : Attribute
 {
 	public string Note { get; private set; }
-	public CalloutType Type { get; private set; } = CalloutType.Comment;
+	public CalloutType Type { get; private set; } = CalloutType.Info;
 	public StringName? Condition { get; private set; } = null;
 
 	public CalloutAttribute(string note)

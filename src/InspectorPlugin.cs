@@ -1,4 +1,5 @@
 #if TOOLS
+using System;
 using System.Reflection;
 using Godot;
 using Raele.InspectorCallout.Attributes;
@@ -20,13 +21,42 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		bool wide
 	)
 	{
-		FieldInfo? field = @object.GetType().GetField(name);
+		MemberInfo? member = @object.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy) as MemberInfo
+			?? @object.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy);
 
-		if (field?.GetCustomAttribute<HideWhenAttribute>() is HideWhenAttribute hideWhen && !hideWhen.TestShow(@object))
-			return true;
+		if (@object is Resource && member?.GetCustomAttribute<ExportCategoryAttribute>() is ExportCategoryAttribute category)
+		{
+			PanelContainer panel = new();
+			panel.CustomMinimumSize = new Vector2(0, 24);
+			panel.SizeFlagsHorizontal = Control.SizeFlags.Fill | Control.SizeFlags.Expand;
+			// panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat()
+			// {
+			// 	BgColor = Colors.Red,
+			// });
+			this.AddCustomControl(panel);
+			{
+				RichTextLabel label = new()
+				{
+					Text = $"[b]{category.Name}[/b]",
+					BbcodeEnabled = true,
+					FitContent = true,
+					AutowrapMode = TextServer.AutowrapMode.WordSmart,
+					HorizontalAlignment = HorizontalAlignment.Center,
+					VerticalAlignment = VerticalAlignment.Center,
+				};
+				panel.AddChild(label);
+			}
+		}
 
-		if (field?.GetCustomAttribute<SeparatorAttribute>() is SeparatorAttribute separator) separator.Evaluate(this);
-		if (field?.GetCustomAttribute<MarginAttribute>() is MarginAttribute margin) margin.Evaluate(this);
+		// if (field?.GetCustomAttribute<HideWhenAttribute>() is HideWhenAttribute hideWhen && !hideWhen.TestShow(@object))
+		// 	return true;
+
+		if (member?.GetCustomAttribute<SeparatorAttribute>() is SeparatorAttribute separator) separator.Evaluate(this);
+		if (member?.GetCustomAttribute<MarginAttribute>() is MarginAttribute margin) margin.Evaluate(this);
+
+		// string? tooltip = member?.GetCustomAttribute<TooltipAttribute>() is TooltipAttribute tooltipAttribute
+		// 	? tooltipAttribute.Text
+		// 	: null;
 
 		Godot.Collections.Dictionary property = new()
 		{
@@ -51,7 +81,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 
 		{
 			if (
-				field?.GetCustomAttribute<RequiredAttribute>() is RequiredAttribute required
+				member?.GetCustomAttribute<RequiredAttribute>() is RequiredAttribute required
 				&& required.TestIsError(@object, name, out string? error)
 			)
 			{
@@ -74,7 +104,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 		}
 
 		if (
-			field?.GetCustomAttribute<CalloutAttribute>() is CalloutAttribute callout
+			member?.GetCustomAttribute<CalloutAttribute>() is CalloutAttribute callout
 			&& !string.IsNullOrWhiteSpace(callout.Note)
 			&& callout.Test(@object)
 		)
@@ -93,7 +123,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 					AddError(callout.Note);
 					break;
 				default:
-					GD.PushWarning($"Unknown {nameof(CalloutAttribute.CalloutType)} \"{callout.Type}\" in field \"{field.Name}\" of object \"{@object.GetType().Name}\".");
+					GD.PushWarning($"Unknown {nameof(CalloutAttribute.CalloutType)} \"{callout.Type}\" in field \"{member.Name}\" of object \"{@object.GetType().Name}\".");
 					break;
 			}
 
@@ -101,7 +131,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 
 		void AddInfo(string message) => AddDialogAbove(message, EditorIcons.IconName.NodeInfo);
 		void AddComment(string message)
-			=> AddLabelBelow(message, EditorIcons.IconName.VisualShaderNodeComment, Colors.DimGray);
+			=> AddLabelBelow(message, EditorIcons.IconName.VisualShaderNodeComment, Colors.DimGray, Colors.White with { A = .25f });
 		void AddWarning(string message)
 			=> AddLabelBelow(message, EditorIcons.IconName.StatusWarning, Colors.Yellow with { S = .5f });
 		void AddError(string message)
@@ -153,10 +183,10 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 			}
 		}
 
-		void AddLabelBelow(string message, string iconName, Color color)
+		void AddLabelBelow(string message, string iconName, Color color, Color? modulate = null)
 		{
 			MarginContainer margin = new();
-			margin.AddThemeConstantOverride("margin_left", 4);
+			margin.AddThemeConstantOverride("margin_left", 8);
 			this.AddPropertyEditor(name, margin, addToEnd: true);
 			{
 				HBoxContainer hbox = new();
@@ -168,6 +198,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 						StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 						CustomMinimumSize = new Vector2(16, 16),
 						Size = new Vector2(16, 16),
+						Modulate = modulate ?? Colors.White,
 					};
 					hbox.AddChild(icon);
 				}
@@ -180,7 +211,7 @@ public partial class InspectorPlugin : EditorInspectorPlugin
 						BbcodeEnabled = true,
 						FitContent = true,
 					};
-					label.AddThemeColorOverride("font_color", color);
+					label.AddThemeColorOverride("default_color", color);
 					label.SizeFlagsHorizontal = Control.SizeFlags.Fill | Control.SizeFlags.Expand;
 					hbox.AddChild(label);
 				}
