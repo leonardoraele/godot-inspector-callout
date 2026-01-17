@@ -1,7 +1,7 @@
 #if TOOLS
-using System;
 using System.Reflection;
 using Godot;
+using Raele.GodotUtils;
 using Raele.InspectorCallout.Attributes;
 
 namespace Raele.InspectorCallout;

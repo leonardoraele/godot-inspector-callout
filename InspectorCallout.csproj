@@ -1,0 +1,16 @@
+<Project Sdk="Godot.NET.Sdk/4.5.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>Raele.InspectorCallout</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>14</LangVersion>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CSharpierIgnore>true</CSharpierIgnore>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- <PackageReference Include="RaeleGodotUtilsCSharp" Version="0.1.0" /> -->
+    <!-- <ProjectReference Include="../RaeleUtils/RaeleUtils.csproj" /> -->
+    <ProjectReference Include="../RaeleUtils/RaeleUtils.csproj" />
+  </ItemGroup>
+</Project>
